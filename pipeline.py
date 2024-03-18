@@ -15,7 +15,7 @@ def generate(prompt:str, unconditional_prompt:str, input_image=None, strength=0.
              tokenizer=None
              ): 
     '''
-    Main function that allows text to img and img-to-img  
+    Main function that allows text to img and img-to-img. It's an inference time function, so no training is being done here. 
 
     unconditional_prompt: Negative prompt. It will try to stay clear of whatever this string says in the output.  
     input_image: optional if you want to include an img as input 
@@ -152,3 +152,51 @@ def generate(prompt:str, unconditional_prompt:str, input_image=None, strength=0.
             latents = sampler.step(timestep, latents, model_output)
 
         to_idle(diffusion) 
+
+        decoder = models['decoder'] 
+        decoder.to(device) 
+
+        images = decoder(latents) 
+        to_idle(decoder) 
+
+        images = rescale(images, (-1,1), (0,255), clamp=True) 
+        images = images.permute(0,2,3,1)   
+        images = images.to('cpu', torch.uint8).numpy()  
+        return images 
+    
+def rescale(x, old_range, new_range, clamp=False):  
+    '''
+    Returns rescaled tensor from old_range to new_range 
+    '''
+    old_min, old_max = old_range 
+    new_min, new_max = new_range 
+
+    x -= old_min 
+    x *= (new_max - new_min) / (old_max-old_min)  
+    x += new_min 
+
+    if clamp: 
+        x = x.clamp(new_min, new_max) 
+    
+    return x  
+
+def get_time_embedding(timestep:int):  
+    '''
+    Returns positional time encodings for a given timestep. 
+    timestep: int position of time 
+    '''
+    
+    # (160, ) 
+    sin_freqs = torch.pow(10000, -torch.arange(start=0, end=320, step=2, dtype=torch.float32)/160) 
+    cos_freqs = torch.pow(10000, -torch.arange(start=1, end=320, step=2, dtype=torch.float32)/160) 
+
+    # (1,1) * (1,160) = (1,160) 
+    # Adding none in a particular position like this is like torch.unsqueeze() 
+    sin_freqs = torch.tensor([timestep], dtype=torch.float32)[:, None] * sin_freqs[None]   
+    cos_freqs = torch.tensor([timestep], dtype=torch.float32)[:, None] * cos_freqs[None]   
+
+    # (1,320) --> Merges frequencies on the channel dimension, so 160 + 160 = 320 
+    time_embedding = torch.cat([torch.sin(sin_freqs), torch.cos(cos_freqs)], dim=-1)  
+
+    return time_embedding 
+
