@@ -19,7 +19,7 @@ def generate(prompt:str, unconditional_prompt:str, input_image=None, strength=0.
 
     unconditional_prompt: Negative prompt. It will try to stay clear of whatever this string says in the output.  
     input_image: optional if you want to include an img as input 
-    strength: how much attention you want to pay to initial starting image, i.e, how less noise do you want to add to the img. 
+    strength: how much attention you want to pay to  starting image, i.e, how much noise do you want to add to the img.The more this value, the more output will be differnt from input  
     do_cfg: Whether to do classifier free guidance 
     cfg_scale: how much attention we want to pay to the prompt (ranges from 1 to 14)  
     models = dictionary of pretrained models 
@@ -103,3 +103,52 @@ def generate(prompt:str, unconditional_prompt:str, input_image=None, strength=0.
 
             # (Batch_size, Channels, Height, Width) = (1,3,512,512)
             input_image_tensor = input_image_tensor.transpose(1,-1).transpose(-1,-2) 
+
+            encoder_noise = torch.randn(latents_shape, generator=generator, device=device) 
+
+            # Run image through the encoder of the VAE 
+            latents = encoder(input_image_tensor, encoder_noise) 
+
+            sampler.set_strength(strength=strength) # Creates time step schedule based on strength 
+            latents = sampler.add_noise(latents, sampler.timesteps[0])  
+
+            to_idle(encoder) 
+        
+        else: 
+            # If we do text-to-img, start with random noise ~ N(0,I)
+            latents = torch.randn(latents_shape, generator=generator, device=device) 
+
+        
+        # If we have 1000 total time steps during training: 0 ... 999 
+        # During inference, if we only do 50 steps, that means we will denoise with noise levels at: 1000 980 960 940 .... 0 (skipping 20 time steps at a time) 
+
+        diffusion = models['diffusion'] 
+        diffusion.to(device)     
+ 
+        timesteps = tqdm(sampler.timesteps) 
+
+        # Denoising Loop 
+        for i, timestep in enumerate(timesteps): 
+            # (1,320) 
+            time_embedding = get_time_embedding(timestep).to(device) 
+            
+            # (Batch_size, 4, latents_height = 64, latents_width = 64)  
+            model_input = latents  
+
+            if do_cfg: 
+                # Repeats on the batch dimension 
+                # (batch_size, 4, latent_height, latent_width) -> (2* batch_size, 4,latent height, latent width) 
+                # We make 2 copies of the latent, one to be used with conditional prompt, the other to be used with unconditional prompt 
+                model_input =  model_input.repeat(2,1,1,1) 
+
+            # Model output is the predicted noise by UNET 
+            model_output = diffusion(latents, context, time_embedding) 
+
+            if do_cfg: 
+                output_cond, output_uncond = model_output.chunk(2, dim=0) 
+                model_output = cfg_scale * (output_cond - output_uncond) + output_uncond 
+
+            # Remove noise predicted by the UNET 
+            latents = sampler.step(timestep, latents, model_output)
+
+        to_idle(diffusion) 
