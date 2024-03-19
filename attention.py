@@ -86,8 +86,13 @@ class CrossAttention(nn.Module):
         self.n_head = n_head 
 
         # Key and Value come from the input or the context vector. Basically, the vector which we are checking contributes how much 
-        self.kv = nn.Linear(d_context, 2* d_latent, bias=in_proj_bias)  
-        self.q = nn.Linear(d_latent, d_latent, bias=in_proj_bias)  
+        
+        # We could have done the network for K and V like this and then used chunk later, but since it does not match the pretrained stable diffusion model format, I am making a different linear network for K and V 
+        # self.kv_proj = nn.Linear(d_context, 2* d_latent, bias=in_proj_bias)  
+
+        self.k_proj = nn.Linear(d_context, d_latent, bias=in_proj_bias) 
+        self.v_proj = nn.Linear(d_context, d_latent, bias=in_proj_bias) 
+        self.q_proj = nn.Linear(d_latent, d_latent, bias=in_proj_bias)  
         self.out_proj = nn.Linear(d_latent, d_latent, bias=out_proj_bias) 
     
     def forward(self, latent:torch.Tensor, context:torch.Tensor) -> torch.Tensor: 
@@ -96,8 +101,11 @@ class CrossAttention(nn.Module):
         # context: (Batch_size, Seq_len_2 = 77, d_context = 768) 
 
         # Two tensors of shape (batch_size, 77, d_latent) 
-        K,V = self.kv(context).chunk(2, dim=-1)    
-        Q = self.q(latent) 
+        # K,V = self.kv_proj(context).chunk(2, dim=-1) 
+
+        K = self.k_proj(context) 
+        V = self.v_proj(context) 
+        Q = self.q_proj(latent) 
 
         batch_size, seq_len1, d_latent = latent.shape   
         batch_size, seq_len2, d_context = context.shape 
