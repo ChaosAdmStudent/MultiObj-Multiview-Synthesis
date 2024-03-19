@@ -143,6 +143,8 @@ class SwitchSequential(nn.Sequential):
 
             else: 
                 x = layer(x)   
+        
+        return x
 
 class UpSample(nn.Module):  
 
