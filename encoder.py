@@ -9,7 +9,7 @@ class VAE_Encoder(nn.Sequential):
     The Encoder works by increasing the number of channels and reducing size of the image
     '''
     def __init__(self): 
-        super.__init__( 
+        super().__init__( 
             # (batch_size, 128, height, width) 
             nn.Conv2d(3, 128, kernel_size=3, padding=1), 
             VAE_ResidualBlock(128,128), 

@@ -327,6 +327,3 @@ class Diffusion(nn.Module):
         out = self.final(out) 
 
         return out 
-
-        
-        
