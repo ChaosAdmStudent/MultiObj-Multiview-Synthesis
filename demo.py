@@ -60,6 +60,8 @@ def main():
         tokenizer=tokenizer
     )  
 
+    print('Done Training! Output Image Shape: ',output_image.shape) 
+
     img = Image.fromarray(output_image) 
     img.save('../images/txt2img.jpg') 
 
