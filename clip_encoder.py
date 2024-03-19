@@ -16,8 +16,7 @@ class CLIP_Embeddings(nn.Module):
         self.token_embedding = nn.Embedding(num_embeddings=vocab_size, embedding_dim=n_embed)
         self.position_embedding = nn.Parameter(torch.zeros((seq_len, n_embed)))  
     
-    def forward(self, x:torch.Tensor) -> torch.Tensor:  
-        x = x.dtype(torch.long) 
+    def forward(self, x:torch.Tensor) -> torch.Tensor:   
         out = self.token_embedding(x) 
         out += self.position_embedding 
 
@@ -67,8 +66,9 @@ class CLIP(nn.Module):
 
         self.layernorm = nn.LayerNorm(768) 
     
-    def forward(self, x: torch.LongTensor) -> torch.FloatTensor: 
-        out = self.embedding(x) 
+    def forward(self, tokens: torch.LongTensor) -> torch.FloatTensor: 
+        tokens = tokens.type(torch.long)
+        out = self.embedding(tokens) 
         for layer in self.layers: 
             out = layer(out) 
         
