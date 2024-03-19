@@ -33,9 +33,9 @@ def generate(prompt:str, unconditional_prompt:str, input_image=None, strength=0.
             raise ValueError("Strength must be between 0 and 1") 
     
         if idle_device: 
-            to_idle: lambda x: x.to(idle_device) 
+            to_idle = lambda x: x.to(idle_device) 
         else: 
-            to_idle: lambda x: x 
+            to_idle = lambda x: x 
         
         generator = torch.Generator(device=device) 
         if seed is None: 
