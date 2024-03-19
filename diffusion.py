@@ -159,9 +159,11 @@ class UpSample(nn.Module):
 
 class UNET(nn.Module): 
     def __init__(self): 
+
+        super(UNET,self).__init__() 
         
         # Increase number of features, reduce size of input 
-        self.encoders = nn.Sequential(
+        self.encoders = nn.ModuleList([
             # input: (batch_size, 4, h/8, w/8)
             SwitchSequential(nn.Conv2d(4, 320, kernel_size=3, padding=1)), 
 
@@ -204,7 +206,7 @@ class UNET(nn.Module):
             SwitchSequential(UNET_ResidualBlock(1280,1280)), 
 
             SwitchSequential(UNET_ResidualBlock(1280,1280)) 
-        ) 
+        ]) 
 
         self.bottleneck = SwitchSequential(
             UNET_ResidualBlock(1280, 1280), 
@@ -269,6 +271,25 @@ class UNET(nn.Module):
                 UNET_AttentionBlock(8,40)
                 )
         ]) 
+    
+    def forward(self, x, context, time):
+        # x: (Batch_Size, 4, Height / 8, Width / 8)
+        # context: (Batch_Size, Seq_Len, Dim) 
+        # time: (1, 1280)
+
+        skip_connections = []
+        for layers in self.encoders:
+            x = layers(x, context, time)
+            skip_connections.append(x)
+
+        x = self.bottleneck(x, context, time)
+
+        for layers in self.decoders:
+            # Since we always concat with the skip connection of the encoder, the number of features increases before being sent to the decoder's layer
+            x = torch.cat((x, skip_connections.pop()), dim=1) 
+            x = layers(x, context, time)
+        
+        return x
 
 
 class UNET_OutputLayer(nn.Module):  

@@ -14,12 +14,12 @@ class CLIP_Embeddings(nn.Module):
         # Create embeddings for words 
         super(CLIP_Embeddings, self).__init__() 
         self.token_embedding = nn.Embedding(num_embeddings=vocab_size, embedding_dim=n_embed)
-        self.pos_embedding = nn.Parameter(torch.zeros((seq_len, n_embed)))  
+        self.position_embedding = nn.Parameter(torch.zeros((seq_len, n_embed)))  
     
     def forward(self, x:torch.Tensor) -> torch.Tensor:  
         x = x.dtype(torch.long) 
         out = self.token_embedding(x) 
-        out += self.pos_embedding 
+        out += self.position_embedding 
 
         return out 
 
@@ -33,7 +33,8 @@ class CLIP_Layer(nn.Module):
         self.layernorm_1 = nn.LayerNorm(d_embed) 
         self.attention = SelfAttention(n_head, d_embed) 
         self.layernorm_2 = nn.LayerNorm(d_embed)
-        self.feed_forward = nn.Linear(d_embed, d_embed)     
+        self.linear_1 = nn.Linear(d_embed, 4 * d_embed) 
+        self.linear_2 = nn.Linear(4* d_embed, d_embed)     
     
     def forward(self, x:torch.Tensor) -> torch.Tensor: 
         # x: (batch_size, seq_len, d_embed) 
@@ -44,7 +45,9 @@ class CLIP_Layer(nn.Module):
         out += res  # Residual skip connection 
         out = self.layernorm_2(out)  
         res = out 
-        out = self.feed_forward(out)  
+        out = self.linear_1(out)  
+        out = out * torch.sigmoid(1.702 * out) # QuickGELU activation function
+        out = self.linear_2(out) 
         out += res # Residual Skip connection 
 
         return out 
@@ -59,7 +62,7 @@ class CLIP(nn.Module):
         # These parameter values are coming from the original Stable Diffusion implementation 
         self.embedding = CLIP_Embeddings(vocab_size=49408, n_embed=768, seq_len=77)
         self.layers = nn.Sequential(
-            *[CLIP_Layer(4, 768) for _ in range(5)]
+            *[CLIP_Layer(4, 768) for _ in range(12)]
         )  
 
         self.layernorm = nn.LayerNorm(768) 

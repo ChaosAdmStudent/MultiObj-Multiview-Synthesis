@@ -9,10 +9,10 @@ class VAE_ResidualBlock(nn.Module):
     '''
     def __init__(self, in_channels, out_channels): 
         super(VAE_ResidualBlock, self).__init__()    
-        self.group_norm1 = nn.GroupNorm(32, in_channels)  
-        self.conv2D_1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1) # Input size does not change
-        self.group_norm2 = nn.GroupNorm(32, out_channels) 
-        self.conv2D_2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1) # Again height, width does not change 
+        self.groupnorm_1 = nn.GroupNorm(32, in_channels)  
+        self.conv_1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1) # Input size does not change
+        self.groupnorm_2 = nn.GroupNorm(32, out_channels) 
+        self.conv_2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1) # Again height, width does not change 
 
         if in_channels == out_channels: 
             self.residual_layer = nn.Identity() 
@@ -20,10 +20,12 @@ class VAE_ResidualBlock(nn.Module):
             self.residual_layer = nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1) 
          
     def forward(self, x:torch.Tensor) -> torch.Tensor: 
-        out = self.group_norm1(x) 
-        out = self.conv2D_1(out) 
-        out = self.group_norm2(out) 
-        out = self.conv2D_2(out) 
+        out = self.groupnorm_1(x) 
+        out = F.silu(out) 
+        out = self.conv_1(out) 
+        out = self.groupnorm_2(out) 
+        out = F.silu(out) 
+        out = self.conv_2(out) 
 
         # If in_channels = out_channels, then we can directly add out + x 
         # In this case, residual_layer = identity function which does not change x at all 
@@ -68,23 +70,33 @@ class VAE_Decoder(nn.Sequential):
             VAE_ResidualBlock(512,512), 
             VAE_ResidualBlock(512,512), 
             VAE_ResidualBlock(512,512),  
+            VAE_ResidualBlock(512,512), 
 
             # Up until now size of input is still height/8, width/8. 
             # We scaled channels so far, not the size of the input. Need to upscale size
             # Hence, shape: (Batch_size, 512, height/8, width/8) 
 
             # (batch_size, 512, height/4, width/4) 
-            nn.Upsample(scale_factor=2), 
+            nn.Upsample(scale_factor=2),  
+            nn.Conv2d(512,512, kernel_size=3, padding=1), 
+
             VAE_ResidualBlock(512, 512), 
-            VAE_ResidualBlock(512,256), 
+            VAE_ResidualBlock(512, 512), 
+            VAE_ResidualBlock(512, 512), 
 
             # (batch_size, 512, h/2, w/2) 
             nn.Upsample(scale_factor=2), 
+            nn.Conv2d(512,512, kernel_size=3, padding=1), 
+
+            VAE_ResidualBlock(512,256), 
             VAE_ResidualBlock(256,256), 
-            VAE_ResidualBlock(256, 128), 
+            VAE_ResidualBlock(256, 256), 
 
             # (batch_size, 128, h, w)   
             nn.Upsample(scale_factor=2), 
+            nn.Conv2d(256, 256, kernel_size=3, padding=1), 
+
+            VAE_ResidualBlock(256,128), 
             VAE_ResidualBlock(128,128), 
             VAE_ResidualBlock(128,128), 
 

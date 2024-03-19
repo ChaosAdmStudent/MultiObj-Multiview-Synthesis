@@ -1,6 +1,4 @@
 import torch 
-import torch.nn as nn 
-import torch.nn.functional as F 
 import numpy as np 
 
 '''
@@ -38,8 +36,76 @@ class DDPMSampler:
         ''' 
         step = self.num_training_steps // num_inference_steps 
         self.num_inference_steps = num_inference_steps 
-        self.timesteps = torch.from_numpy(np.arange(0, self.num_training_steps, step).round()[::-1].copy().astype(np.int64))  
+        self.timesteps = torch.from_numpy(np.arange(0, self.num_training_steps, step).round()[::-1].copy().astype(np.int64))   
 
+    def _get_previous_timestep(self, timestep: int): 
+        step = self.num_training_steps // self.num_inference_steps  
+        return timestep - step  
+    
+    def _get_variance(self, timestep: int) -> torch.Tensor: 
+        t = timestep 
+        prev_t = self._get_previous_timestep(t) 
+
+        alpha_prod_t = self.alphas_cumprod[t]  
+        alpha_prod_prev_t = self.alphas_cumprod[prev_t] if prev_t >= 0 else self.one  
+        beta_prod_t = (1-alpha_prod_t) 
+        beta_prod_prev_t = (1-alpha_prod_prev_t) 
+        current_alpha_t = alpha_prod_t / alpha_prod_prev_t 
+        current_beta_t = 1 - current_alpha_t
+
+        # Computed using formula 7 of DDPM paper 
+        variance =  (beta_prod_prev_t * current_beta_t) / beta_prod_t 
+        variance = torch.clamp(variance, min=1e-20) 
+
+        return variance 
+
+        
+    def step(self, timestep: int, latents: torch.Tensor, model_output: torch.Tensor): 
+        '''
+        Removes noise from latent based on model_output. In the diffusion maths, this is the q(x_t-1 | x_t, x_0). 
+        Thus, we are getting the previous time step (less noisy version), given the current noisy image and the predicted x_0 as context. As shown by the math, this is a closed formula 
+        (Eq 7 in DDPM paper). For x_0 in the formula, we refer to Eq 15 in DDPM paper. 
+        '''
+        t = timestep   
+        prev_t = self._get_previous_timestep(t)  
+
+        alpha_prod_t = self.alphas_cumprod[t]  
+        alpha_prod_prev_t = self.alphas_cumprod[prev_t] if prev_t >= 0 else self.one  
+        beta_prod_t = (1-alpha_prod_t) 
+        beta_prod_prev_t = (1-alpha_prod_prev_t)  
+        current_alpha_t = alpha_prod_t / alpha_prod_prev_t 
+        current_beta_t = 1 - current_alpha_t  
+
+        # Compute predicted original sample using formula 15 of the DDPM paper  
+        pred_original_sample = (latents - (beta_prod_t ** 0.5) * model_output) / (alpha_prod_t ** 0.5) 
+
+        # Compute coefficients for pred_original_sample and current sample x_t (Eq 7)  
+        pred_original_sample_coeff = (alpha_prod_prev_t ** 0.5 * current_beta_t) / beta_prod_t  
+        current_sample_coeff = (current_alpha_t ** 0.5 * beta_prod_prev_t) / beta_prod_t 
+
+        # Compute the predicted previous time step mean  
+        pred_previous_mean = pred_original_sample_coeff * pred_original_sample + current_sample_coeff * latents 
+
+        pred_prev_std_dev = 0 
+        if t > 0: 
+            pred_prev_std_dev = (self._get_variance(t) ** 0.5)  
+
+        device = model_output.device 
+        noise = torch.randn(model_output.shape, generator=self.generator, device=device, dtype=model_output.dtype)
+        
+        pred_prev_sample = pred_previous_mean + pred_prev_std_dev * noise 
+        
+        return pred_prev_sample
+
+    def set_strength(self, strength:float = 1.0): 
+        '''
+        Alters start step of the timesteps schedule according to the strength. The more this value, the more noise will be added. 
+        ''' 
+
+        start_step = self.num_inference_steps - int(self.num_inference_steps * strength) # If strength = 0.8, we skip 20% of the inference steps 
+        self.timesteps = self.timesteps[start_step:] 
+        self.start_step = start_step 
+    
     def add_noise(self, original_samples: torch.Tensor, timesteps: torch.IntTensor) -> torch.FloatTensor: 
 
         ''' 
