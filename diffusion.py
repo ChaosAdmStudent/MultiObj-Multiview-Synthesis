@@ -97,7 +97,8 @@ class UNET_AttentionBlock(nn.Module):
         n,c,h,w = latent.shape 
 
         latent = latent.view((n,c,h*w)) 
-        latent.transpose(1,2) # (n,h*w, c) 
+        latent = latent.transpose(1,2) # (n,h*w, c) 
+        
 
         # Normalization + Self Attention with Skip Connection  
 
