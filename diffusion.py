@@ -115,6 +115,7 @@ class UNET_AttentionBlock(nn.Module):
 
         # Feed-Forward Layer with GeGLU and Skip Connection 
         res_short = latent 
+        latent = self.layernorm_3(latent) 
         latent, gate = self.linear_geglu_1(latent).chunk(2, dim=-1)   
         latent = latent * F.gelu(gate)  # GeGLU activation function (has lot of parameters) 
         latent = self.linear_geglu_2(latent) 
@@ -126,7 +127,7 @@ class UNET_AttentionBlock(nn.Module):
 
         # Final Conv + Normalization + Long Skip Connection  
         latent = self.conv_output(latent) 
-        latent = self.layernorm_3(latent) 
+  
         latent += res_long 
 
         return latent 
