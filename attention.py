@@ -107,6 +107,7 @@ class CrossAttention(nn.Module):
         V = self.v_proj(context) 
         Q = self.q_proj(latent) 
 
+        input_shape = latent.shape
         batch_size, seq_len1, d_latent = latent.shape   
         batch_size, seq_len2, d_context = context.shape 
         
@@ -122,7 +123,7 @@ class CrossAttention(nn.Module):
         cross_att = scores @ V  # (batch_size, n_head, seq_len1, d_head) 
 
         cross_att = cross_att.transpose(1,2).contiguous()  
-        cross_att = cross_att.reshape((batch_size, seq_len1, d_latent))   
+        cross_att = cross_att.view(input_shape)  
 
         # Passing this sequence through final Linear layer 
         cross_att = self.out_proj(cross_att) 
