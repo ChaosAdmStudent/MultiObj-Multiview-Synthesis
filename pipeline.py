@@ -89,11 +89,11 @@ def generate(prompt:str, unconditional_prompt:str, input_image=None, strength=0.
             encoder = models['encoder'] 
             encoder.to(device) 
 
-            input_image = input_image.reshape((HEIGHT,WIDTH)) 
+            input_image = input_image.resize((HEIGHT,WIDTH)) 
             input_image_tensor = np.array(input_image)  
 
             # (Height, Width, Channels) = (512,512,3)  
-            input_image_tensor = torch.tensor(input_image_tensor, dtype=torch.float32)  
+            input_image_tensor = torch.tensor(input_image_tensor, dtype=torch.float32, device=device)  
 
             # Scaling values from [0,255] to [-1,1] 
             input_image_tensor = rescale(input_image_tensor, (0,255), (-1,1)) 
