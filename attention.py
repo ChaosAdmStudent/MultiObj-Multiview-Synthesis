@@ -110,8 +110,8 @@ class CrossAttention(nn.Module):
         batch_size, seq_len1, d_latent = latent.shape   
         batch_size, seq_len2, d_context = context.shape 
         
-        interm_shape_latent = (batch_size, seq_len1, self.n_head, self.d_head) 
-        interm_shape_context = (batch_size, seq_len2, self.n_head, self.d_head) 
+        interm_shape_latent = (batch_size, -1, self.n_head, self.d_head) 
+        interm_shape_context = (batch_size, -1, self.n_head, self.d_head) 
 
         Q = Q.view(interm_shape_latent).transpose(1,2) # (Batch_size, n_head, seq1, d_head) 
         K = K.view(interm_shape_context).transpose(1,2) # (Batch_size, n_head, seq2, d_head)
