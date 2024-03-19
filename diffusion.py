@@ -173,6 +173,11 @@ class UNET(nn.Module):
                 UNET_AttentionBlock(8,40)
             ), 
 
+            SwitchSequential(
+                UNET_ResidualBlock(320,320), 
+                UNET_AttentionBlock(8,40)
+            ), 
+
             # output: (batch_size, 320, h/16, w/16)
             SwitchSequential(nn.Conv2d(320, 320, kernel_size=3, stride=2, padding=1)), 
 
