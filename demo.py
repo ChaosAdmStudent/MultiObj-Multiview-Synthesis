@@ -8,7 +8,7 @@ def main():
 
     DEVICE = 'cpu' 
 
-    ALLOW_CUDA = False 
+    ALLOW_CUDA = True 
     ALLOW_MPS = False 
 
     if torch.cuda.is_available() and ALLOW_CUDA: 
