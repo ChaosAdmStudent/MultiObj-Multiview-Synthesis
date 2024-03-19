@@ -17,7 +17,7 @@ class VAE_ResidualBlock(nn.Module):
         if in_channels == out_channels: 
             self.residual_layer = nn.Identity() 
         else: 
-            self.residual_layer = nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1) 
+            self.residual_layer = nn.Conv2d(in_channels, out_channels, kernel_size=1, padding=0) 
          
     def forward(self, x:torch.Tensor) -> torch.Tensor: 
         out = self.groupnorm_1(x) 
