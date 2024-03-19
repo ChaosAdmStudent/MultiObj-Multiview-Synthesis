@@ -35,7 +35,7 @@ class UNET_ResidualBlock(nn.Module):
         if in_features == out_features: 
             self.residual_layer = nn.Identity()
         else: 
-            self.residual_layer = nn.Conv2d(in_features, out_features) 
+            self.residual_layer = nn.Conv2d(in_features, out_features, kernel_size=1, padding=0) 
 
     def forward(self, feature:torch.Tensor, time: torch.Tensor):  
         # feature is the latent : (batch_size, in_features, h,w) 
