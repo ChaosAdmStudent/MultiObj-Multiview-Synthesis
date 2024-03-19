@@ -142,7 +142,7 @@ def generate(prompt:str, unconditional_prompt:str, input_image=None, strength=0.
                 model_input =  model_input.repeat(2,1,1,1) 
 
             # Model output is the predicted noise by UNET 
-            model_output = diffusion(latents, context, time_embedding) 
+            model_output = diffusion(model_input, context, time_embedding) 
 
             if do_cfg: 
                 output_cond, output_uncond = model_output.chunk(2, dim=0) 
