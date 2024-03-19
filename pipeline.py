@@ -162,7 +162,7 @@ def generate(prompt:str, unconditional_prompt:str, input_image=None, strength=0.
         images = rescale(images, (-1,1), (0,255), clamp=True) 
         images = images.permute(0,2,3,1)   
         images = images.to('cpu', torch.uint8).numpy()  
-        return images 
+        return images[0]
     
 def rescale(x, old_range, new_range, clamp=False):  
     '''
