@@ -42,8 +42,9 @@ class CLIP_Layer(nn.Module):
         out = self.layernorm_1(x) 
         out = self.attention(out, causal_mask=True) # We want causal mask for text
         out += res  # Residual skip connection 
-        out = self.layernorm_2(out)  
+         
         res = out 
+        out = self.layernorm_2(out) 
         out = self.linear_1(out)  
         out = out * torch.sigmoid(1.702 * out) # QuickGELU activation function
         out = self.linear_2(out) 
@@ -60,9 +61,10 @@ class CLIP(nn.Module):
 
         # These parameter values are coming from the original Stable Diffusion implementation 
         self.embedding = CLIP_Embeddings(vocab_size=49408, n_embed=768, seq_len=77)
-        self.layers = nn.Sequential(
-            *[CLIP_Layer(4, 768) for _ in range(12)]
-        )  
+        self.layers = nn.ModuleList([
+            CLIP_Layer(12, 768) for _ in range(12)
+        
+        ])  
 
         self.layernorm = nn.LayerNorm(768) 
     

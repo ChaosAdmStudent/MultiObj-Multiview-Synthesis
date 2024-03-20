@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn 
 import torch.nn.functional as F   
 import math 
-
+    
 class SelfAttention(nn.Module): 
     '''
     Does Self Attention on a tensor of shape (N,H*W,d_embed)  
