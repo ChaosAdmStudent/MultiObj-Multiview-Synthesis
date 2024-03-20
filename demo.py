@@ -28,21 +28,21 @@ def main():
 
     # Text to Image 
 
-    prompt = 'A car with wings' 
-    uncond_prompt = ''   
+    prompt = 'A realistic orange cat with blue eyes. High resolution, 8k, sharp image and whole body visible'
+    uncond_prompt = ''
     do_cfg = True 
-    cfg_scale = 10 
+    cfg_scale = 12
 
     # Image to Image 
 
     input_image = None 
     image_path = '../images/car.jpg' 
-    input_image = Image.open(image_path) 
-    strength = 1.0 
+    # input_image = Image.open(image_path) 
+    strength = 0.9 
 
     sampler = 'ddpm' 
-    num_inference_steps = 500 
-    seed = 53 
+    num_inference_steps = 50 
+    seed = 14 
 
     output_image = pipeline.generate(
         prompt=prompt, 
@@ -63,7 +63,7 @@ def main():
     print('Done Training! Output Image Shape: ',output_image.shape) 
 
     img = Image.fromarray(output_image) 
-    img.save('../images/img2img.jpg') 
+    img.save('../images/txt2img.jpg') 
 
 if __name__ == '__main__': 
     main() 

@@ -42,7 +42,6 @@ class CLIP_Layer(nn.Module):
         out = self.layernorm_1(x) 
         out = self.attention(out, causal_mask=True) # We want causal mask for text
         out += res  # Residual skip connection 
-         
         res = out 
         out = self.layernorm_2(out) 
         out = self.linear_1(out)  
